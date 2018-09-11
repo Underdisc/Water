@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ext">
+      <UniqueIdentifier>{ebef14ad-0c50-4162-be4e-34565d980dda}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\Action.hpp" />
+    <ClInclude Include="..\..\src\Camera.h" />
+    <ClInclude Include="..\..\src\CameraController.h" />
+    <ClInclude Include="..\..\src\Complex.h" />
+    <ClInclude Include="..\..\src\Complex_test.h" />
+    <ClInclude Include="..\..\src\Context.h" />
+    <ClInclude Include="..\..\src\Error.h" />
+    <ClInclude Include="..\..\src\FFT.h" />
+    <ClInclude Include="..\..\src\Framer.h" />
+    <ClInclude Include="..\..\src\GenericAction.h" />
+    <ClInclude Include="..\..\src\GraphicsTest.h" />
+    <ClInclude Include="..\..\src\OpenGLContext.h" />
+    <ClInclude Include="..\..\src\OpenGLError.h" />
+    <ClInclude Include="..\..\src\Random.h" />
+    <ClInclude Include="..\..\src\Shader.h" />
+    <ClInclude Include="..\..\src\ShaderLibrary.h" />
+    <ClInclude Include="..\..\src\ThreadUtils.h" />
+    <ClInclude Include="..\..\src\Time.h" />
+    <ClInclude Include="..\..\src\Water.h" />
+    <ClInclude Include="..\..\src\WaterFFT.h" />
+    <ClInclude Include="..\..\src\ext\imconfig.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\imgui.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\imgui_impl_sdl_gl3.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\imgui_internal.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\json.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\json-forwards.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\stb_rect_pack.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\stb_textedit.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ext\stb_truetype.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\Camera.cpp" />
+    <ClCompile Include="..\..\src\CameraController.cpp" />
+    <ClCompile Include="..\..\src\Complex.cpp" />
+    <ClCompile Include="..\..\src\Context.cpp" />
+    <ClCompile Include="..\..\src\Error.cpp" />
+    <ClCompile Include="..\..\src\FFT.cpp" />
+    <ClCompile Include="..\..\src\Framer.cpp" />
+    <ClCompile Include="..\..\src\GenericAction.cpp" />
+    <ClCompile Include="..\..\src\GraphicsTest.cpp" />
+    <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\OpenGLContext.cpp" />
+    <ClCompile Include="..\..\src\OpenGLError.cpp" />
+    <ClCompile Include="..\..\src\Shader.cpp" />
+    <ClCompile Include="..\..\src\Time.cpp" />
+    <ClCompile Include="..\..\src\Water.cpp" />
+    <ClCompile Include="..\..\src\WaterFFT.cpp" />
+    <ClCompile Include="..\..\src\ext\imgui.cpp">
+      <Filter>ext</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ext\imgui_demo.cpp">
+      <Filter>ext</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ext\imgui_draw.cpp">
+      <Filter>ext</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ext\imgui_impl_sdl_gl3.cpp">
+      <Filter>ext</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ext\json.cpp">
+      <Filter>ext</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
