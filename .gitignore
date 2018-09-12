@@ -1,3 +1,7 @@
+## Project specific files
+
+water.error
+
 ## Ignore build artifacts
 
 *.o
