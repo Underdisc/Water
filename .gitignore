@@ -1,6 +1,6 @@
 ## Project specific files
 
-water.error
+build/working/water.error
 
 ## Ignore build artifacts
 
