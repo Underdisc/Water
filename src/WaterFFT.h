@@ -155,6 +155,7 @@ public:
   float m_DisplaceScale;
 private:
   void UpdateFFT(float time);
+  void UpdateTailEdge(char edge);
   std::pair<float, glm::vec3> GetLocationHeightNormalFFT(
     const glm::vec2 & location);
   float GetLocationHeightFFT(const MeshPosition & mesh_position);
@@ -168,13 +169,23 @@ private:
   void InitializeVertexBuffer();
   void InitializeIndexBuffer();
   void InitializeOffsetBuffer(unsigned expansion);
-  // Vertex information
+
+  // Vertex information for the complete mesh.
   //! Number of vertices on the x axis.
   unsigned m_XStride;
   //! Number of vertices on the z axis.
   unsigned m_ZStride;
   //! The total number of verts on the mesh.
   unsigned m_NumVerts;
+
+  // Vertex information for the fft computation.
+  //! Number of vertices on the x axis.
+  unsigned m_fft_XStride;
+  //! Number of vertices on the z axis.
+  unsigned m_fft_ZStride;
+  //! The total number of verts on the mesh.
+  unsigned m_fft_NumVerts;
+
   //! The front and back buffers. m_ReadBuffer is the buffer that is currently
   // being treated as the front buffer.
   std::vector<Vertex> m_VertexBufferA;

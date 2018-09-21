@@ -88,20 +88,25 @@ float WaterFFT::IntensityMap::GetIntensity(float x, float z)
 WaterFFT::WaterFFT(unsigned grid_dimension, float meter_dimension, 
   unsigned expansion, bool use_fft = true) :
   m_HeightScale(1.0f), m_DisplaceScale(1.0f), 
-  m_XStride(grid_dimension),  m_ZStride(grid_dimension),
   m_XLength(meter_dimension), m_ZLength(meter_dimension), 
   m_Amplitude(0.00005f), m_Gravity(9.81f), m_Wind(64.0f, 64.0f), 
   m_IMap(nullptr)
 {
-  while (grid_dimension > 2)
+  // Check for errors before continuing. First check that the grid dimension
+  // passed in is a power of 2.
+  unsigned gd_check = grid_dimension;
+  while (gd_check > 2)
   {
-    if (grid_dimension % 2 != 0) {
+    if (gd_check % 2 != 0) {
       WaterFFTError error(WaterFFTError::INVALID_GRID_DIM, "The water grid's"
         " dimension must be a power of 2");
       throw(error);
     }
-    grid_dimension /= 2;
+    gd_check /= 2;
   }
+
+  // Check that the ratio of dimension over stride is greater than some minimum
+  // value.
   float dx_dz = meter_dimension / (float)m_XStride;
   if (dx_dz < MIN_DX_DZ)
   {
@@ -109,41 +114,52 @@ WaterFFT::WaterFFT(unsigned grid_dimension, float meter_dimension,
       " divided by the dimension in grid units should be larger than 2 cm");
       throw(error);
   }
+
+  // Set up the strides for the complete mesh and the part of the mesh that the
+  // fft will be used to compute positions for.
+  m_XStride = grid_dimension + 1;
+  m_ZStride = grid_dimension + 1;
   m_NumVerts = m_XStride * m_ZStride;
-  // allocating FFTW in and out arrays
-  uint num_bytes = sizeof(Complex) * m_NumVerts;
-  m_HTildeIn = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeSlopeXIn = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeSlopeZIn = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeDisplaceXIn = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeDisplaceZIn = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeOut = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeSlopeXOut = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeSlopeZOut = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeDisplaceXOut = (Complex *)fftwf_malloc(num_bytes);
-  m_HTildeDisplaceZOut = (Complex *)fftwf_malloc(num_bytes);
-  // FFTW plans
-  m_HTildeFFTWPlan = fftwf_plan_dft_2d(m_XStride, m_ZStride,
+  m_fft_XStride = grid_dimension;
+  m_fft_ZStride = grid_dimension;
+  m_fft_NumVerts = m_fft_XStride * m_fft_ZStride;
+
+  // Allocating arrays for FFTW input and output. 
+  uint num_fft_bytes = sizeof(Complex) * m_fft_NumVerts;
+  m_HTildeIn = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeSlopeXIn = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeSlopeZIn = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeDisplaceXIn = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeDisplaceZIn = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeOut = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeSlopeXOut = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeSlopeZOut = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeDisplaceXOut = (Complex *)fftwf_malloc(num_fft_bytes);
+  m_HTildeDisplaceZOut = (Complex *)fftwf_malloc(num_fft_bytes);
+  
+  // Creating FFTW plans.
+  m_HTildeFFTWPlan = fftwf_plan_dft_2d(m_fft_XStride, m_fft_ZStride,
     (fftwf_complex *)m_HTildeIn, 
     (fftwf_complex *)m_HTildeOut,
     FFTW_FORWARD, FFTW_MEASURE);
-  m_HTildeSlopeXPlan = fftwf_plan_dft_2d(m_XStride, m_ZStride,
+  m_HTildeSlopeXPlan = fftwf_plan_dft_2d(m_fft_XStride, m_fft_ZStride,
     (fftwf_complex *)m_HTildeSlopeXIn, 
     (fftwf_complex *)m_HTildeSlopeXOut,
     FFTW_FORWARD, FFTW_MEASURE);
-  m_HTildeSlopeZPlan = fftwf_plan_dft_2d(m_XStride, m_ZStride,
+  m_HTildeSlopeZPlan = fftwf_plan_dft_2d(m_fft_XStride, m_fft_ZStride,
     (fftwf_complex *)m_HTildeSlopeZIn, 
     (fftwf_complex *)m_HTildeSlopeZOut,
     FFTW_FORWARD, FFTW_MEASURE);
-  m_HTildeDisplaceXPlan = fftwf_plan_dft_2d(m_XStride, m_ZStride,
+  m_HTildeDisplaceXPlan = fftwf_plan_dft_2d(m_fft_XStride, m_fft_ZStride,
     (fftwf_complex *)m_HTildeDisplaceXIn, 
     (fftwf_complex *)m_HTildeDisplaceXOut,
     FFTW_FORWARD, FFTW_MEASURE);
-  m_HTildeDisplaceZPlan = fftwf_plan_dft_2d(m_XStride, m_ZStride,
+  m_HTildeDisplaceZPlan = fftwf_plan_dft_2d(m_fft_XStride, m_fft_ZStride,
     (fftwf_complex *)m_HTildeDisplaceZIn, 
     (fftwf_complex *)m_HTildeDisplaceZOut,
     FFTW_FORWARD, FFTW_MEASURE);
-  // initialize buffers
+
+  // Initializing all of the buffers needed for the water.
   InitializeVertexBuffer();
   InitializeIndexBuffer();
   InitializeOffsetBuffer(expansion);
@@ -251,94 +267,178 @@ unsigned WaterFFT::OffsetBufferSize()
 
 void WaterFFT::UpdateFFT(float time)
 {
-  unsigned vertex_index = 0;
-  for (unsigned z = 0; z < m_ZStride; ++z) 
+  unsigned fft_vertex_index = 0;
+  for (unsigned z = 0; z < m_fft_ZStride; ++z) 
   {
-    float m = z - (m_ZStride / 2.0f);
+    float m = z - (m_fft_ZStride / 2.0f);
     float kz = (TAU * m) / m_ZLength;
-    for (unsigned x = 0; x < m_XStride; ++x) 
+    for (unsigned x = 0; x < m_fft_XStride; ++x) 
     {
-      float n = x - (m_XStride / 2.0f);
+      float n = x - (m_fft_XStride / 2.0f);
       float kx = (TAU * n) / m_XLength;
       glm::vec2 k(kx, kz);
       float k_magnitude = glm::length(k);
       // calculate htilde / fourier domain
       const Complex & htilde0 = 
-        m_VertexExtrasBuffer[vertex_index].m_HTilde0;
+        m_VertexExtrasBuffer[fft_vertex_index].m_HTilde0;
       const Complex & htilde0_conj = 
-        m_VertexExtrasBuffer[vertex_index].m_HTilde0Conjugate;
+        m_VertexExtrasBuffer[fft_vertex_index].m_HTilde0Conjugate;
       Complex htilde = HTilde(htilde0, htilde0_conj, k, time);
       // use htilde to set values for fft computation
-      m_HTildeIn[vertex_index] = htilde;
-      m_HTildeSlopeXIn[vertex_index] = htilde * Complex(0, kx);
-      m_HTildeSlopeZIn[vertex_index] = htilde * Complex(0, kz);
+      m_HTildeIn[fft_vertex_index] = htilde;
+      m_HTildeSlopeXIn[fft_vertex_index] = htilde * Complex(0, kx);
+      m_HTildeSlopeZIn[fft_vertex_index] = htilde * Complex(0, kz);
       if (k_magnitude < EPSILON)
       {
-        m_HTildeDisplaceXIn[vertex_index] = Complex(0.0f, 0.0f);
-        m_HTildeDisplaceZIn[vertex_index] = Complex(0.0f, 0.0f);
+        m_HTildeDisplaceXIn[fft_vertex_index] = Complex(0.0f, 0.0f);
+        m_HTildeDisplaceZIn[fft_vertex_index] = Complex(0.0f, 0.0f);
       }
       else
       {
-        m_HTildeDisplaceXIn[vertex_index] = 
+        m_HTildeDisplaceXIn[fft_vertex_index] = 
           htilde * Complex(0.0f, -kx / k_magnitude);
-        m_HTildeDisplaceZIn[vertex_index] = 
+        m_HTildeDisplaceZIn[fft_vertex_index] = 
           htilde * Complex(0.0f, -kz / k_magnitude);
       }
-      ++vertex_index;
+      ++fft_vertex_index;
     }
   }
-  // execute fft
+
+  // Execute the fft.
   fftwf_execute(m_HTildeFFTWPlan);
   fftwf_execute(m_HTildeSlopeXPlan);
   fftwf_execute(m_HTildeSlopeZPlan);
   fftwf_execute(m_HTildeDisplaceXPlan);
   fftwf_execute(m_HTildeDisplaceZPlan);
-  // use fft output for new mesh
-  vertex_index = 0;
+
+  // Use the output from the fft for the new vertex positions of the mesh.
+  unsigned vertex_index = 0;
+  fft_vertex_index = 0;
   int sign = 1;
-  for (unsigned z = 0; z < m_ZStride; ++z) 
+  for (unsigned z = 0; z < m_fft_ZStride; ++z) 
   {
-    for (unsigned x = 0; x < m_XStride; ++x) 
+    for (unsigned x = 0; x < m_fft_XStride; ++x) 
     {
-      // apply sign to all fft output
-      m_HTildeOut[vertex_index] *= (float)sign;
-      m_HTildeSlopeXOut[vertex_index] *= (float)sign;
-      m_HTildeSlopeZOut[vertex_index] *= (float)sign;
-      m_HTildeDisplaceXOut[vertex_index] *= (float)sign;
-      m_HTildeDisplaceZOut[vertex_index] *= (float)sign;
-      // update vertex position
+      // Apply sign to all fft output.
+      m_HTildeOut[fft_vertex_index] *= (float)sign;
+      m_HTildeSlopeXOut[fft_vertex_index] *= (float)sign;
+      m_HTildeSlopeZOut[fft_vertex_index] *= (float)sign;
+      m_HTildeDisplaceXOut[fft_vertex_index] *= (float)sign;
+      m_HTildeDisplaceZOut[fft_vertex_index] *= (float)sign;
+      
+      // Get the starting values for the vertices new position. 
       Vertex & vert = (*m_WriteBuffer)[vertex_index];
-      float x_location = m_VertexExtrasBuffer[vertex_index].m_Ox;
-      float z_location = m_VertexExtrasBuffer[vertex_index].m_Oz;
+      float x_location = m_VertexExtrasBuffer[fft_vertex_index].m_Ox;
+      float z_location = m_VertexExtrasBuffer[fft_vertex_index].m_Oz;
       float position_y_factor = m_HeightScale;
       float normal_y_factor = 1.0f / m_HeightScale;
+      
+      // Get the factors that need to be applied from the intensity map.
       if (m_IMap)
       {
-        float x_0to1 = x / static_cast<float>(m_XStride);
-        float z_0to1 = z / static_cast<float>(m_XStride);
+        float x_0to1 = x / static_cast<float>(m_fft_XStride);
+        float z_0to1 = z / static_cast<float>(m_fft_XStride);
         float intensity = m_IMap->GetIntensity(x_0to1, z_0to1);
         if(intensity == 0.0f)
           intensity = EPSILON;
         position_y_factor *= intensity;
         normal_y_factor *= 1.0f / intensity;
       }
-      // setting vertex position
+
+      // Set the new position of the vertex.
       vert.m_Px = x_location + 
-        m_DisplaceScale * m_HTildeDisplaceXOut[vertex_index].Real();
-      vert.m_Py = m_HTildeOut[vertex_index].Real() * position_y_factor;
+        m_DisplaceScale * m_HTildeDisplaceXOut[fft_vertex_index].Real();
+      vert.m_Py = m_HTildeOut[fft_vertex_index].Real() * position_y_factor;
       vert.m_Pz = z_location + m_DisplaceScale * 
-        m_HTildeDisplaceZOut[vertex_index].Real();
-      // setting the normal
-      glm::vec3 normal(0.0f - m_HTildeSlopeXOut[vertex_index].Real(),
-        1.0f, 0.0f - m_HTildeSlopeZOut[vertex_index].Real());
+        m_HTildeDisplaceZOut[fft_vertex_index].Real();
+
+      // Set the new normal of the vertex. 
+      glm::vec3 normal(0.0f - m_HTildeSlopeXOut[fft_vertex_index].Real(),
+        1.0f, 0.0f - m_HTildeSlopeZOut[fft_vertex_index].Real());
       vert.m_Nx = normal.x;
       vert.m_Ny = normal.y * normal_y_factor;
       vert.m_Nz = normal.z;
 
-      sign *= -1;
       ++vertex_index;
+      ++fft_vertex_index;
+      sign *= -1;
     }
+
+    // We need to increment the vertex index again because the number of
+    // vertices in the actual vertex array is extended by one in both the x
+    // and z direction when compared to the arrays used for computing the fft.
+    ++vertex_index;
     sign *= -1;
+  }
+
+  // Updating the last row and column. These vertices are "attached" to the
+  // other side of the grid, so their heights should be equivalent. The first
+  // call updates the last vertices in the x direction. The second call updates
+  // the last vertices in the z direction.
+  UpdateTailEdge(0);
+  UpdateTailEdge(1);
+  
+  // Now the tail corner is updated. This is a special case because the
+  // original vertex that is used is diagonally 
+  // opposite from the vertex that is being updated.
+  Vertex & update_vert = (*m_WriteBuffer)[m_NumVerts - 1];
+  Vertex & og_vert = (*m_WriteBuffer)[0];
+  update_vert.m_Px = og_vert.m_Px + m_XLength;
+  update_vert.m_Py = og_vert.m_Py;
+  update_vert.m_Pz = og_vert.m_Pz + m_ZLength;
+}
+
+void WaterFFT::UpdateTailEdge(char edge)
+{
+  // These values will be different depending on the edge that we choose to
+  // update.
+  unsigned up_vertex_index;
+  unsigned og_vertex_index;
+  unsigned d_vertex_index;
+  float x_offset;
+  float z_offset;
+  
+  // If the tail to be updated is zero, we update the vertices at the end of the
+  // grid in the x direction. If it is not zero, we update the vertices at the
+  // end of the grid in the z direction.
+  if(edge == 0)
+  {
+    up_vertex_index = m_XStride - 1;
+    og_vertex_index = 0;
+    d_vertex_index = m_XStride;
+    x_offset = m_XLength;
+    z_offset = 0.0f;
+  }
+  else
+  {
+    up_vertex_index = m_XStride * (m_ZStride - 1);
+    og_vertex_index = 0;
+    d_vertex_index = 1;
+    x_offset = 0.0f;
+    z_offset = m_ZLength;
+  }
+
+  for(unsigned i = 0; i < (m_ZStride - 1); ++i)
+  {
+    // The vertex being updated is the very last vertex (an edge vertex). The
+    // vertex that this updated vertex is attached to is the vextex on the other
+    // side of the grid. This other vertex is the original (og) vertex.
+    Vertex & update_vert = (*m_WriteBuffer)[up_vertex_index];
+    Vertex & og_vert = (*m_WriteBuffer)[og_vertex_index];
+
+    // Update the vertex position.
+    update_vert.m_Px = og_vert.m_Px + x_offset;
+    update_vert.m_Py = og_vert.m_Py; 
+    update_vert.m_Pz = og_vert.m_Pz + z_offset;
+
+    // Update the vertices normal.
+    update_vert.m_Nx = og_vert.m_Nx;
+    update_vert.m_Ny = og_vert.m_Ny;
+    update_vert.m_Nz = og_vert.m_Nz;
+
+    // Move the vertex indices forward.
+    up_vertex_index += d_vertex_index;
+    og_vertex_index += d_vertex_index;
   }
 }
 
@@ -498,35 +598,50 @@ float WaterFFT::PhillipsSpectrum(const glm::vec2 & k)
 
 inline void WaterFFT::InitializeVertexBuffer()
 {
-  // clearing vertex data
+  // Clear the vertex data if it happens to exist.
   m_VertexBufferA.clear();
-  // finding vertex starting positions
+
+  // Set the starting positions of the vertices and calculate the htilde vertex
+  // extra values that will be used for the fft computation.
   m_VertexBufferA.reserve(m_NumVerts);
-  for (unsigned z = 0; z < m_ZStride; ++z) {
-    float m = z - (m_ZStride / 2.0f);
+  for (unsigned z = 0; z < m_ZStride; ++z) 
+  {
+    float m = z - (m_fft_ZStride / 2.0f);
     float kz = (TAU * m) / m_ZLength; // TODO: Distribute the 2
-    for (unsigned x = 0; x < m_XStride; ++x) {
-      float n = x - (m_XStride / 2.0f);
-      float kx = (TAU * n) / m_XLength; // TODO: Distribute the 2
-      glm::vec2 k(kx, kz);
-      float start_x = m_XLength *  n / m_XStride;
+    
+    for (unsigned x = 0; x < m_XStride; ++x) 
+    {
+      float n = x - (m_fft_XStride / 2.0f);
+
+      // Find the vertice's starting position values.
+      float start_x = m_XLength *  n / m_fft_XStride;
       float start_y = 0.0f;
-      float start_z = m_ZLength * m / m_ZStride;
-      // initial positions for vertex buffers
+      float start_z = m_ZLength * m / m_fft_ZStride;
+
+      // Add the new vertex to the vertex buffers.
       m_VertexBufferA.push_back(
         Vertex(start_x, start_y, start_z, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f));
       m_VertexBufferB.push_back(
         Vertex(start_x, start_y, start_z, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f));
-      m_ReadBuffer = &m_VertexBufferA;
-      m_WriteBuffer = &m_VertexBufferB;
-      // initialization of vertex extras
-      Complex htilde0_vertex = HTilde0(k);
-      Complex htilde0_conjugate_vertex = HTilde0(-k).Conjugate();
-      m_VertexExtrasBuffer.push_back(
-        VertexExtra(start_x, start_y, start_z, 
-        htilde0_vertex, htilde0_conjugate_vertex));
+
+      // Add the extra htilde values to the vertex extras buffer.
+      if(z < m_fft_ZStride && x < m_fft_XStride)
+      {
+        float kx = (TAU * n) / m_XLength; // TODO: Distribute the 2
+        glm::vec2 k(kx, kz);
+        Complex htilde0_vertex = HTilde0(k);
+        Complex htilde0_conjugate_vertex = HTilde0(-k).Conjugate();
+        m_VertexExtrasBuffer.push_back(
+          VertexExtra(start_x, start_y, start_z, 
+          htilde0_vertex, htilde0_conjugate_vertex));
+      }
     }
   }
+
+  // Vertex buffer A will be used to the first frame of the water. The
+  // simulation will being writing the next frame to vertex buffer B.
+  m_ReadBuffer = &m_VertexBufferA;
+  m_WriteBuffer = &m_VertexBufferB;
 }
 
 inline void WaterFFT::InitializeIndexBuffer()
